@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7957812d-569f-4ec5-bada-59e998d9958c" basePath="jms">
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="f2f9513b-dd35-4ed7-9e68-6aff302a0840" >
+		<vm:queues >
+			<vm:queue queueName="myq" />
+		</vm:queues>
+	</vm:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="b00d5140-f98d-400b-8763-76bd33310596" >
+		<db:oracle-connection host="localhost" user="SYSTEM" password="tiger" />
+	</db:config>
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="be39a77f-bb7f-4372-a1d3-eb46ef40369e" />
+	<configuration doc:name="Configuration" doc:id="206e0bfb-2ba9-4517-a32b-2c5fde1ced4e" defaultErrorHandler-ref="123globalerrorhandlerError_Handler" correlationIdGeneratorExpression="#[4888]"/>
+	<flow name="jmsprojectFlow" doc:id="b2a2f124-4862-41df-b6cc-f551d4384f18" >
+		<http:listener doc:name="Listener" doc:id="dd5cfdfd-2091-4193-aa19-aaffb4eb1860" config-ref="HTTP_Listener_config" path="emp"/>
+		<try doc:name="Try" doc:id="e6c4866f-c334-4433-8c5d-a076f3cb8296" >
+			<validation:is-number doc:name="Is number" doc:id="47248bb1-a2b3-4924-b396-3710427780c6" value="#[attributes.queryParams.num]" config-ref="Validation_Config" numberType="INTEGER" />
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="00aaa4cd-bfc8-4d69-a25a-0b5316b1115d" type="ANY">
+					<ee:transform doc:name="Transform Message" doc:id="ddeda118-b3db-497a-95ba-7a5a3a8423b5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	
+	"mesage": "its try"
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="0867733c-97aa-481d-bf9b-ec50eab10986" message='"its try logger"'/>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<db:select doc:name="Select" doc:id="b1783f0c-0b74-4f2c-8921-1c519fc0acec" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employe]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="3c70294c-18e8-46a5-b593-682f5e9112c8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<vm:publish doc:name="Publish" doc:id="d653cf15-8365-4531-bb67-ae2c060f419b" config-ref="VM_Config" queueName="myq"/>
+		<email:send doc:name="Send" doc:id="3816385e-93eb-4498-8c84-490a61795f88" config-ref="Email_SMTP" fromAddress="jaypal486@gmail.com" subject='"hello mule"'>
+			<email:to-addresses >
+				<email:to-address value="anujaypal5051@gmail.com" />
+			</email:to-addresses>
+		</email:send>
+	</flow>
+	<flow name="jmsprojectFlow2" doc:id="b85f8ade-4ab2-46cd-90c0-a54dbecbe6a2" >
+		<logger level="INFO" doc:name="Logger" doc:id="1fd4a9dd-ab17-4c0b-9df1-d8b8de75a637" />
+	</flow>
+	<flow name="jmsprojectFlow5" doc:id="9321bcdd-1e26-4afe-9a10-e9ca8815c360" >
+		<http:request method="GET" doc:name="Request" doc:id="0f4ba10a-4bb2-4583-86c4-554a649fe689" url="vv"/>
+	</flow>
+	<flow name="jmsprojectFlow1" doc:id="8d927565-e5ed-4a08-8695-6f30dbd92bf4" >
+		<http:listener doc:name="Listener" doc:id="535a504a-ff34-431f-b7ac-e020a41de5bf" config-ref="HTTP_Listener_config" path="con"/>
+		<vm:consume doc:name="Consume" doc:id="a68eae97-0c55-448a-9339-5ffc741c6a49" config-ref="VM_Config" queueName="myq"/>
+	</flow>
+</mule>
